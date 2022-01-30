@@ -1,6 +1,8 @@
 # WeatherBar
 Weatherbar is a custom-module for [Waybar](https://github.com/Alexays/Waybar) to see weather information.
 
+![preview](img/preview.png)
+
 See the manual page of [Waybar custom-module(5)](https://man.archlinux.org/man/community/waybar/waybar-custom.5.en) for more information about custom-module.
 
 # Download
