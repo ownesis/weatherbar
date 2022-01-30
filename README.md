@@ -10,7 +10,9 @@ See the manual page of [Waybar custom-module(5)](https://man.archlinux.org/man/c
 
 # Compile
 `cd weatherbar`
+
 `mkdir build && cd build/`
+
 `cmake .. && make`
 
 # Install
