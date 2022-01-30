@@ -9,9 +9,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <json-c/json.h>
+#include <ssfmt.h>
 #include "utils.h"
 #include "meteo.h"
 #include "config_parser.h"
+
+#define MAX_BUF 2048
 
 #define JSON_GET_STR(j, k, s)                                                       \
     do {                                                                            \
@@ -37,17 +40,50 @@
             json_object_deep_copy(_tmp, &(s)->k, NULL);                             \
     } while (0)
 
-struct Dict {
-    char *key;
-    char *value;
-};
-
 static _Bool startswith(const char *str, const char *start) {
     return strncmp(start, str, strlen(start)) == 0;
 }
 
-static char *fmt_keyvalue(const char *key, const struct Config *config, const struct Meteo *meteo) {
-    struct Dict fmt_array[] = {
+static size_t get_file_size(int fd) {
+    struct stat stat = {0};
+    
+    fstat(fd, &stat);
+
+    return stat.st_size;
+}
+
+static char *_get_weather_subkey(const char *weather_key, const struct Config *config, const struct Meteo *meteo) {
+    json_object *tmp[2] = {NULL};
+    
+    if (!json_object_object_get_ex(config->weather, meteo->condition_key, &tmp[0])) {
+        PANIC("Error no key '%s' in weather object.\n", 
+                meteo->condition_key);
+    }
+
+    if (json_object_get_type(tmp[0]) != json_type_object) {
+        PANIC("Error the key weather.%s is not of type object/dict.\n",
+                meteo->condition_key);
+    }
+
+    if (!json_object_object_get_ex(tmp[0], weather_key, &tmp[1])) {
+        PANIC("Error no key '%s' found in object weather.%s in configuration file.\n", 
+                weather_key,
+                meteo->condition_key);
+    }
+
+    if (json_object_get_type(tmp[1]) != json_type_string) {
+        PANIC("Error the key weather.%s.%s is not of type string.\n",
+                meteo->condition_key,
+                weather_key);
+    }
+    
+    return (char *)json_object_get_string(tmp[1]);
+}
+
+
+char *format_string(const char *format, const struct Config *conf, const struct Meteo *meteo) {
+    char *buf = calloc(1, MAX_BUF);
+    struct SSFMTDict array[] = {
         {"name", meteo->name},
         {"country", meteo->country},
         {"latitude", meteo->latitude},   
@@ -65,108 +101,16 @@ static char *fmt_keyvalue(const char *key, const struct Config *config, const st
         {"wind_gust", meteo->wnd_gust},
         {"humidity", meteo->humidity},
         {"pressure", meteo->pressure},
+        {"weather.icon", _get_weather_subkey("icon", conf, meteo)},
+        {"weather.text", _get_weather_subkey("text", conf, meteo)},
     };
 
-    if (startswith(key, "weather.")) {
-        char *weather_key = NULL;
-        json_object *tmp[2] = {NULL};
-        
-        if (!json_object_object_get_ex(config->weather, meteo->condition_key, &tmp[0])) {
-            PANIC("Error no key '%s' in weather object.\n", 
-                    meteo->condition_key);
-        }
+    ssfmt_ctx_t ctx = SSFMT_INIT(array, MAX_BUF, 0);
 
-        if (json_object_get_type(tmp[0]) != json_type_object) {
-            PANIC("Error the key weather.%s is not of type object/dict.\n",
-                    meteo->condition_key);
-        }
-
-        weather_key = strchr(key, '.')+1;
-
-        if (!json_object_object_get_ex(tmp[0], weather_key, &tmp[1])) {
-            PANIC("Error no key '%s' found in object weather.%s in configuration file.\n", 
-                    weather_key,
-                    meteo->condition_key);
-        }
-
-        if (json_object_get_type(tmp[1]) != json_type_string) {
-            PANIC("Error the key weather.%s.%s is not of type string.\n",
-                    meteo->condition_key,
-                    weather_key);
-        }
-        
-        return (char *)json_object_get_string(tmp[1]);
-    }
-
-    for (size_t i = 0; i < ARRAY_LEN(fmt_array); i++) {
-        if (strcmp(fmt_array[i].key, key) == 0)
-            return fmt_array[i].value;
-    }
-
-    return NULL;
-}
-
-char *braces_parser(const char *format, const struct Config *config, const struct Meteo *meteo) {
-    char *value = NULL;
-    char *buf = calloc(1, DEFAULT_MAX_LINE+1);
-    char key[DEFAULT_MAX_LINE+1] = {0};
-    size_t key_index = 0;
-    size_t buf_index = 0;
-    size_t format_len = 0;
-    int i = 0;
-
-    if (!buf || !format)
-        return NULL;
-
-    format_len = strlen(format);
-
-    for (; i < format_len && buf_index < DEFAULT_MAX_LINE; i++, buf_index++) {
-        memset(key, 0, DEFAULT_MAX_LINE);
-        key_index = 0;
-
-        if (format[i] == '{') {
-            /* if not escaped brace */
-            if (i > 0 && format[i-1] == '\\') {
-                /* erase backslash with brace */
-                buf_index--;
-            } else {
-                i++;
-                while (format[i] != '}') {
-                    if (key_index == DEFAULT_MAX_LINE)
-                        return buf;
-                    key[key_index++] = format[i++];
-                }
-                i++;
-
-                value = fmt_keyvalue(key, config, meteo);
-
-                if (value) {
-                    strncat(buf, value, (DEFAULT_MAX_LINE - buf_index));
-                    buf_index += strlen(value);
-                } else {
-                    strncat(buf, "", (DEFAULT_MAX_LINE - buf_index));
-                    buf_index++;
-                }
-            } 
-        } 
-        
-        if (format[i] == '}' && format[i-1] == '\\') {
-            /* replace backslash with brace */
-            buf_index--;
-        }
-
-        buf[buf_index] = format[i];
-    }
-
-    return buf;
-}
-
-static size_t get_file_size(int fd) {
-    struct stat stat = {0};
+    if (!buf)
+        PANIC("Error occurred when allocate buffer.\n");  
     
-    fstat(fd, &stat);
-
-    return stat.st_size;
+    return ssfmt_parser(&ctx, format, buf, MAX_BUF);
 }
 
 void config_free(struct Config *conf) {

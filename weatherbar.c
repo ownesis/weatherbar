@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
 
     meteo_get(&meteo, city);
 
-    formated_text = braces_parser(conf.text, &conf, &meteo);
-    formated_tooltip = braces_parser(conf.tooltip, &conf, &meteo);
+    formated_text = format_string(conf.text, &conf, &meteo);
+    formated_tooltip = format_string(conf.tooltip, &conf, &meteo);
 
     waybar_args.text = formated_text;
     waybar_args.tooltip = formated_tooltip;

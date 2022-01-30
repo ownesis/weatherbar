@@ -15,7 +15,7 @@ struct Config {
     json_object *weather;
 };
 
-char *braces_parser(const char *format, const struct Config *config, const struct Meteo *meteo);
+char *format_string(const char *format, const struct Config *config, const struct Meteo *meteo);
 void config_free(struct Config *conf);
 int config_parse(struct Config *conf, const char *path);
 
