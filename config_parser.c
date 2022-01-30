@@ -84,7 +84,7 @@ static char *_get_weather_subkey(const char *weather_key, const struct Config *c
 char *format_string(const char *format, const struct Config *conf, const struct Meteo *meteo) {
     char *buf = calloc(1, MAX_BUF);
     struct SSFMTDict array[] = {
-        {"name", meteo->name},
+        {"city", meteo->name},
         {"country", meteo->country},
         {"latitude", meteo->latitude},   
         {"longitude", meteo->longitude},   
