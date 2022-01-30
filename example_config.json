@@ -1,5 +1,5 @@
 {
-    "text": "{temp}°C {weather.icon} {name}",
+    "text": "{temp}°C {weather.icon}",
     "tooltip": "{weather.text} - @{hour} (P:{pressure} H:{humidity})",
 
     "weather": {
