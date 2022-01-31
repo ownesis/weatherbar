@@ -15,6 +15,13 @@ See the manual page of [Waybar custom-module(5)](https://man.archlinux.org/man/c
 
 `cmake .. && make`
 
+# Dependencies
+- [`json-c`](https://github.com/json-c/json-c)
+- [`curl`](https://curl.se/libcurl/c/)
+- [`waybar_json`](https://github.com/ownesis/waybar_json)
+- [`ipinfo`](https://github.com/ownesis/ipinfo)
+- [`ssfmt`](https://github.com/ownesis/ssfmt)
+
 # Install
 `sudo cp weatherbar /usr/local/bin/`
 
