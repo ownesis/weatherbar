@@ -10,9 +10,19 @@
 char *get_ip_city(void) {
     struct IPInfo *info = NULL;
     char *city = NULL;
+    int res;
+    char *ipinfo_err[6] = {
+        [IPINFO_MEM_ERR]        = "An error occurred when allocate memory.\n",
+        [IPINFO_CURL_ERR]       = "An error occurred when call CURL routines.\n",
+        [IPINFO_JSON_ERR]       = "An error occured when parsing JSON of ipapi.co\n.",
+        [IPINFO_ENDPOINT_ERR]   = "An error occured, the API endpoint 'apiapi.com' return a reponse code different to 200.\n",
+        [IPINFO_IP_ERR]         = "An error occured, invalid IP address.\n",
+    };
 
-    if (ipinfo_get(&info, NULL) != IPINFO_OK)
-        return NULL;
+    res = ipinfo_get(&info, NULL);
+
+    if (res != IPINFO_OK)
+        PANIC(ipinfo_err[res]);
 
     city = strdup(info->city);
 
@@ -35,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     config_parse(&conf, argv[1]);
 
-    /* if city is not net */
+    /* if city is not set */
     if (strlen(conf.city) == 0)
         city = get_ip_city();
     else 
